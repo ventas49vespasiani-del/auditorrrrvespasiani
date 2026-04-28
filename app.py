@@ -29,18 +29,20 @@ def check_password():
 if check_password():
     st.title("📊 Auditoría de Repuestos Mostrador - Vespasiani")
 
-    # CARGA AUTOMÁTICA DEL ARCHIVO
-    file_path = "reporte_repuestos_mostrador.xlsx - MOSTRADOR.csv"
+    # CARGA AUTOMÁTICA DEL ARCHIVO EXCEL (.xlsx)
+    # IMPORTANTE: Asegúrate de que el nombre sea IDÉNTICO al de GitHub
+    file_path = "reporte_repuestos_mostrador.xlsx"
     
     try:
-        # Se omite la primera fila que suele ser el título del reporte en tu CSV
-        df = pd.read_csv(file_path, skiprows=1)
+        # Usamos pd.read_excel en lugar de read_csv
+        # Saltamos la primera fila (título del reporte)
+        df = pd.read_excel(file_path, skiprows=1)
         
-        # Limpieza básica
-        df = df.dropna(subset=["Sucursal", "Mes"])
-        
-        # --- SIDEBAR / FILTROS ---
+        # Filtros en la barra lateral
         st.sidebar.header("Filtros de Auditoría")
+        
+        # Limpieza básica por si hay filas vacías al final del Excel
+        df = df.dropna(subset=["Sucursal", "Mes"])
         
         sucursales = sorted(df["Sucursal"].unique())
         sucursal_sel = st.sidebar.multiselect("Sucursal:", options=sucursales, default=sucursales)
@@ -50,7 +52,7 @@ if check_password():
 
         df_selection = df.query("Sucursal == @sucursal_sel & Mes == @mes_sel")
 
-        # --- KPIs ---
+        # KPIs
         col1, col2, col3 = st.columns(3)
         total_venta = df_selection["Venta Total"].sum()
         utilidad_prom = df_selection["(%) Utilidad"].mean()
@@ -62,25 +64,23 @@ if check_password():
 
         st.markdown("---")
 
-        # --- GRÁFICOS ---
+        # Gráficos
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("Ventas por Mes")
             v_mes = df_selection.groupby("Mes").sum(numeric_only=True)[["Venta Total"]].reset_index()
-            fig_bar = px.bar(v_mes, x="Mes", y="Venta Total", color_discrete_sequence=["#0083B8"])
-            st.plotly_chart(fig_bar, use_container_width=True)
+            st.plotly_chart(px.bar(v_mes, x="Mes", y="Venta Total", color_discrete_sequence=["#0083B8"]), use_container_width=True)
         
         with c2:
             st.subheader("Ventas por Corredor")
             v_corr = df_selection.groupby("Corredor").sum(numeric_only=True)[["Venta Total"]].reset_index()
-            fig_pie = px.pie(v_corr, values="Venta Total", names="Corredor", hole=0.4)
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(px.pie(v_corr, values="Venta Total", names="Corredor", hole=0.4), use_container_width=True)
 
-        # --- TABLA ---
+        # Tabla de datos
         st.subheader("Detalle de Auditoría")
         st.dataframe(df_selection, use_container_width=True)
 
-        # --- EXPORTAR ---
+        # Botón de Descarga
         buffer = BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             df_selection.to_excel(writer, index=False)
@@ -93,6 +93,6 @@ if check_password():
         )
 
     except FileNotFoundError:
-        st.warning(f"Esperando el archivo: {file_path}")
+        st.warning(f"Sube el archivo Excel con el nombre '{file_path}' a tu repositorio de GitHub.")
     except Exception as e:
-        st.error(f"Error técnico: {e}")
+        st.error(f"Error al leer el Excel: {e}")
